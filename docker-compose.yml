@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  streamlit-app:
+    build: .
+    ports:
+      - "8501:8501"
+    restart: always
+    volumes:
+      - ./app.py:/app/app.py
+      - ./requirements.txt:/app/requirements.txt
+      - ./personal/fitness_data.csv:/app/personal/fitness_data.csv
+
+  nginx:
+    image: "nginx:latest"
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    restart: always
+    depends_on:
+      - streamlit-app
