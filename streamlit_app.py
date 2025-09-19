@@ -223,9 +223,15 @@ config = {
 if st.toggle("Enable editing"):
     edited_data = st.data_editor(data,
                                  column_config=config,
-                                 use_container_width=True)
+                                 use_container_width=True,
+                                 hide_index=True)
     if st.button("Save"):
         save_data(edited_data)
         st.rerun()
 else:
-    st.dataframe(data, column_config=config, use_container_width=True)
+    st.dataframe(
+        data,
+        column_config=config,
+        use_container_width=True,
+        hide_index=True,
+    )
