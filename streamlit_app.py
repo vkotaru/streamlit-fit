@@ -8,7 +8,7 @@ from datetime import datetime
 # ------------------------------------------------
 
 CSV_FILE_PATH = 'personal/fitness_data.csv'
-CSV_FILE_PATH = 'fitness_example_data.csv'
+# CSV_FILE_PATH = 'fitness_example_data.csv'
 
 CARDIO_ACTIVITY_LIST = [
     "🏃🏽‍♂️ Running", "🏃🏾 Trail Running", "🚵🏽‍♀️ Biking", "🏊🏽‍♂️ Swimming",
@@ -193,12 +193,23 @@ with top_right_cell:
         # Filter the data based on the slider
         filtered_data = data.head(days_to_show)
 
-        st.altair_chart(
-            alt.Chart(filtered_data).mark_line().encode(
-                alt.X("Date:T", axis=alt.Axis(title='Date',
-                                              format='%Y-%m-%d')),
-                alt.Y("Weight (kg):Q").scale(zero=False),
-            ).properties(height=300, title="Weight Trend"))
+        weight_chart = alt.Chart(filtered_data).mark_line().encode(
+            alt.X("Date:T", axis=alt.Axis(title='Date', format='%Y-%m-%d')),
+            alt.Y("Weight (kg):Q").scale(zero=False),
+        ).properties(height=300, title="Weight Trend")
+
+        # Add moving average
+        show_ma = st.toggle("Show Moving Average",  value=True)
+        if show_ma:
+            ma_window = st.slider("Moving Average Window", 1, 30, 7)
+            filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(ma_window).mean()
+            ma_chart = alt.Chart(filtered_data).mark_line(color='red').encode(
+                alt.X("Date:T"),
+                alt.Y("MA:Q")
+            )
+            st.altair_chart(weight_chart + ma_chart)
+        else:
+            st.altair_chart(weight_chart)
 
 # ---------------------
 # Display the raw table.
