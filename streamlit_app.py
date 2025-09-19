@@ -7,7 +7,8 @@ from datetime import datetime
 # Data
 # ------------------------------------------------
 
-CSV_FILE_PATH = 'fitness_data.csv'
+CSV_FILE_PATH = 'personal/fitness_data.csv'
+CSV_FILE_PATH = 'fitness_example_data.csv'
 
 CARDIO_ACTIVITY_LIST = [
     "🏃🏽‍♂️ Running", "🏃🏾 Trail Running", "🚵🏽‍♀️ Biking", "🏊🏽‍♂️ Swimming",
@@ -85,7 +86,7 @@ top_row = st.columns([1, 3])
 
 top_left_cell = top_row[0].container(border=True, height='stretch')
 
-top_right_cell = top_row[1].container(border=True, height=600)
+top_right_cell = top_row[1].container(border=True, height='stretch')
 
 with top_left_cell:
     st.subheader("Add/Edit Entry")
@@ -94,53 +95,60 @@ with top_left_cell:
     entry_data = data[data['Date'] == date_to_edit]
 
     with st.form(key='entry_form'):
-        weight = st.number_input("Weight (kg)",
-                                 value=get_value(entry_data, 'Weight (kg)',
-                                                 0.0))
-        waist = st.number_input("Waist (cm)",
-                                value=get_value(entry_data, 'Waist (cm)', 0.0))
-        daily_calories = st.number_input("Daily Calories (kCal)",
-                                         value=get_value(
-                                             entry_data,
-                                             'Daily Calories (kCal)', 0))
-        carbs = st.number_input("Carbs (g)",
-                                value=get_value(entry_data, 'Carbs (g)', 0))
-        protein = st.number_input("Protein (g)",
-                                  value=get_value(entry_data, 'Protein (g)',
-                                                  0))
-        fat = st.number_input("Fat (g)",
-                              value=get_value(entry_data, 'Fat (g)', 0))
+        weight_tab, calorie_tab, cardio_tab, strength_tab = st.tabs(
+            ["Weight", "Calories", "Cardio", "Strength"])
+        with weight_tab:
+            weight = st.number_input("Weight (kg)",
+                                     value=get_value(entry_data, 'Weight (kg)',
+                                                     0.0))
+            waist = st.number_input("Waist (cm)",
+                                    value=get_value(entry_data, 'Waist (cm)',
+                                                    0.0))
+        with calorie_tab:
+            daily_calories = st.number_input("Daily Calories (kCal)",
+                                             value=get_value(
+                                                 entry_data,
+                                                 'Daily Calories (kCal)', 0))
+            carbs = st.number_input("Carbs (g)",
+                                    value=get_value(entry_data, 'Carbs (g)',
+                                                    0))
+            protein = st.number_input("Protein (g)",
+                                      value=get_value(entry_data,
+                                                      'Protein (g)', 0))
+            fat = st.number_input("Fat (g)",
+                                  value=get_value(entry_data, 'Fat (g)', 0))
 
-        cardio_activity_val = get_value(entry_data, 'Cardio Activity', None)
-        cardio_activity_index = CARDIO_ACTIVITY_LIST.index(
-            cardio_activity_val
-        ) if cardio_activity_val in CARDIO_ACTIVITY_LIST else 0
-        cardio_activity = st.selectbox("Cardio Activity",
-                                       CARDIO_ACTIVITY_LIST,
-                                       index=cardio_activity_index)
+        with cardio_tab:
+            cardio_activity_val = get_value(entry_data, 'Cardio Activity',
+                                            None)
+            cardio_activity_index = CARDIO_ACTIVITY_LIST.index(
+                cardio_activity_val
+            ) if cardio_activity_val in CARDIO_ACTIVITY_LIST else 0
+            cardio_activity = st.selectbox("Cardio Activity",
+                                           CARDIO_ACTIVITY_LIST,
+                                           index=cardio_activity_index)
 
-        cardio_duration = st.number_input("Cardio Duration (min)",
-                                          value=get_value(
-                                              entry_data,
-                                              'Cardio Duration (min)', 0))
-        cardio_calories = st.number_input("Cardio Calories (kCal)",
-                                          value=get_value(
-                                              entry_data,
-                                              'Cardio Calories (kCal)', 0))
+            cardio_duration = st.number_input("Cardio Duration (min)",
+                                              value=get_value(
+                                                  entry_data,
+                                                  'Cardio Duration (min)', 0))
+            cardio_calories = st.number_input("Cardio Calories (kCal)",
+                                              value=get_value(
+                                                  entry_data,
+                                                  'Cardio Calories (kCal)', 0))
+        with strength_tab:
+            strength_activity_val = get_value(entry_data, 'Strength Activity',
+                                              None)
+            strength_activity_index = STRENGTH_ACTIVITY_LIST.index(
+                strength_activity_val
+            ) if strength_activity_val in STRENGTH_ACTIVITY_LIST else 0
+            strength_activity = st.selectbox("Strength Activity",
+                                             STRENGTH_ACTIVITY_LIST,
+                                             index=strength_activity_index)
 
-        strength_activity_val = get_value(entry_data, 'Strength Activity',
-                                          None)
-        strength_activity_index = STRENGTH_ACTIVITY_LIST.index(
-            strength_activity_val
-        ) if strength_activity_val in STRENGTH_ACTIVITY_LIST else 0
-        strength_activity = st.selectbox("Strength Activity",
-                                         STRENGTH_ACTIVITY_LIST,
-                                         index=strength_activity_index)
-
-        strength_duration = st.number_input("Strength Duration (min)",
-                                            value=get_value(
-                                                entry_data,
-                                                'Strength Duration (min)', 0))
+            strength_duration = st.number_input(
+                "Strength Duration (min)",
+                value=get_value(entry_data, 'Strength Duration (min)', 0))
 
         submitted = st.form_submit_button("Save")
         if submitted:
