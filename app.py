@@ -185,10 +185,10 @@ with top_left_cell:
 with top_right_cell:
     if not data.empty:
         # Get latest weight and previous weight
-        latest_weight = data['Weight (kg)'].iloc[0]
-        previous_weight = data['Weight (kg)'].iloc[1] if len(data) > 1 else 0
+        latest_weight = data['Weight (kg)'].iloc[-1]
+        previous_weight = data['Weight (kg)'].iloc[-2] if len(data) > 1 else 0
         delta = round(latest_weight - previous_weight, 2)
-        st.metric("Latest Weight", f"{latest_weight} kg", delta=f"{delta} kg")
+        st.metric("Latest Weight", f"{latest_weight} kg", delta=f"{delta} kg", delta_color="inverse")
 
         data['Date'] = pd.to_datetime(data['Date'])
 
@@ -224,10 +224,12 @@ with top_right_cell:
         filtered_data = data[(data['Date'] >= start_date)
                              & (data['Date'] <= today)]
 
-        weight_chart = alt.Chart(filtered_data).mark_line().encode(
-            alt.X("Date:T", axis=alt.Axis(title='Date', format='%Y-%m-%d')),
-            alt.Y("Weight (kg):Q").scale(zero=False),
-        ).properties(height=300, title="Weight Trend")
+        weight_chart = alt.Chart(filtered_data).mark_line(
+            interpolate='basis').encode(
+                alt.X("Date:T", axis=alt.Axis(title='Date',
+                                              format='%Y-%m-%d')),
+                alt.Y("Weight (kg):Q").scale(zero=False),
+            ).properties(height=300, title="Weight Trend")
 
         # Add moving average
         show_ma = st.toggle("Show Moving Average", value=True)
@@ -235,8 +237,9 @@ with top_right_cell:
             ma_window = st.slider("Moving Average Window", 1, 30, 7)
             filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(
                 ma_window).mean()
-            ma_chart = alt.Chart(filtered_data).mark_line(color='red').encode(
-                alt.X("Date:T"), alt.Y("MA:Q"))
+            ma_chart = alt.Chart(filtered_data).mark_line(
+                color='red',
+                interpolate='basis').encode(alt.X("Date:T"), alt.Y("MA:Q"))
             st.altair_chart(weight_chart + ma_chart)
         else:
             st.altair_chart(weight_chart)
@@ -262,7 +265,7 @@ config = {
 }
 
 if st.toggle("Enable editing"):
-    edited_data = st.data_editor(data,
+    edited_data = st.data_editor(data.sort_values(by='Date', ascending=False),
                                  column_config=config,
                                  use_container_width=True,
                                  hide_index=True)
@@ -271,7 +274,7 @@ if st.toggle("Enable editing"):
         st.rerun()
 else:
     st.dataframe(
-        data,
+        data.sort_values(by='Date', ascending=False),
         column_config=config,
         use_container_width=True,
         hide_index=True,
