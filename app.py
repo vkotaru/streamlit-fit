@@ -141,7 +141,7 @@ class FitnessTrackerApp:
                 strength_activity_index = None
                 if strength_activity_val in self.STRENGTH_ACTIVITY_LIST:
                     strength_activity_index = self.STRENGTH_ACTIVITY_LIST.index(
-                        cardio_activity_val)
+                        strength_activity_val)
 
                 strength_activity = st.selectbox(
                     "Strength Activity",
@@ -191,6 +191,7 @@ class FitnessTrackerApp:
 
         data = st.session_state['fitness_data'].sort_values(by='Date',
                                                             ascending=False)
+        data['Date'] = pd.to_datetime(data['Date'])
         if data.empty:
             st.info("No data available to display. Please add an entry.")
             return
