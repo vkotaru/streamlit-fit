@@ -86,11 +86,11 @@ data = load_data()
 
 top_row = st.columns([1, 3])
 
-top_left_cell = top_row[0].container(border=True, height='stretch')
+input_form_cell = top_row[0].container(border=True, height='stretch')
 
-top_right_cell = top_row[1].container(border=True, height='stretch')
+overivew_container = top_row[1].container(border=True, height='stretch')
 
-with top_left_cell:
+with input_form_cell:
     st.subheader("Add/Edit Entry")
     date_to_edit = st.date_input("Date", datetime.now().date())
 
@@ -182,15 +182,45 @@ with top_left_cell:
             save_data(data)
             st.rerun()
 
-with top_right_cell:
-    if not data.empty:
-        # Get latest weight and previous weight
-        latest_weight = data['Weight (kg)'].iloc[-1]
-        previous_weight = data['Weight (kg)'].iloc[-2] if len(data) > 1 else 0
-        delta = round(latest_weight - previous_weight, 2)
-        st.metric("Latest Weight", f"{latest_weight} kg", delta=f"{delta} kg", delta_color="inverse")
+with overivew_container:
+    today = pd.to_datetime(datetime.now().date())
+    data['Date'] = pd.to_datetime(data['Date'])
 
-        data['Date'] = pd.to_datetime(data['Date'])
+    if not data.empty:
+        net_weight_cell, avg_cals_cell, col3, col4 = st.columns(4)
+        with net_weight_cell:
+            # Get latest weight and previous weight
+            latest_weight = data['Weight (kg)'].iloc[-1]
+            previous_weight = data['Weight (kg)'].iloc[-2] if len(
+                data) > 1 else 0
+            delta = round(latest_weight - previous_weight, 2)
+            st.metric("Latest Weight",
+                      f"{latest_weight} kg",
+                      delta=f"{delta} kg",
+                      delta_color="inverse")
+        with avg_cals_cell:
+            # Calculate this week's average calorie intake
+            start_of_week = today - pd.Timedelta(days=6)
+            weekly_calories_data = data[(data['Date'] >= start_of_week)
+                                        & (data['Date'] <= today)]
+
+            # Ensure 'Daily Calories (kCal)' is numeric and handle potential non-numeric values
+            weekly_calories_data['Daily Calories (kCal)'] = pd.to_numeric(
+                weekly_calories_data['Daily Calories (kCal)'], errors='coerce')
+
+            average_weekly_calories = weekly_calories_data[
+                'Daily Calories (kCal)'].mean()
+            DAILY_NET_INTAKE = 2000
+
+            if pd.notna(average_weekly_calories):
+                st.metric(
+                    "Avg Weekly Calories",
+                    f"{average_weekly_calories:.0f} kCal",
+                    delta=
+                    f"{average_weekly_calories - DAILY_NET_INTAKE:.0f} kCal",
+                    delta_color="inverse")
+            else:
+                st.metric("Avg Weekly Calories", "N/A")
 
         # Time horizon selector
         horizon_options = [
@@ -200,9 +230,6 @@ with top_right_cell:
         horizon = st.pills("Time horizon",
                            options=horizon_options,
                            default="3 Months")
-
-        # Filter data based on horizon
-        today = pd.to_datetime(datetime.now().date())
 
         if horizon == "1 Week":
             start_date = today - pd.Timedelta(days=7)
