@@ -254,7 +254,7 @@ class FitnessTrackerApp:
                 alt.X("Date:T", axis=alt.Axis(title='Date',
                                               format='%Y-%m-%d')),
                 alt.Y("Weight (kg):Q").scale(zero=False),
-            ).properties(height=300, title="Weight Trend")
+            ).properties(height=300, title="Weight Trend").interactive()
 
         show_ma = st.toggle("Show Moving Average", value=True)
         if show_ma:
@@ -295,8 +295,8 @@ class FitnessTrackerApp:
             if st.button("Save Changes"):
                 # Update self.data with the edited data
                 edited_data['Date'] = pd.to_datetime(edited_data['Date'])
-                self.data = edited_data.sort_values(by='Date').reset_index(
-                    drop=True)
+                st.session_state['fitness_data'] = edited_data.sort_values(
+                    by='Date').reset_index(drop=True)
                 self._save_data()
                 st.rerun()
         else:

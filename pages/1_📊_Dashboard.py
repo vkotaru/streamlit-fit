@@ -39,8 +39,13 @@ with col2:
                        & (data['Date'] <= today)]
     avg_calories = pd.to_numeric(weekly_data['Daily Calories (kCal)'],
                                  errors='coerce').mean()
+    DAILY_NET_INTAKE = 2000
+
     if pd.notna(avg_calories):
-        st.metric("Avg Calories (This Week)", f"{avg_calories:.0f} kCal")
+        st.metric("Avg Calories (This Week)",
+                  f"{avg_calories:.0f} kCal",
+                  delta=f"{avg_calories - DAILY_NET_INTAKE:.0f} kCal",
+                  delta_color="inverse")
     else:
         st.metric("Avg Calories (This Week)", "N/A")
 
@@ -63,8 +68,8 @@ weight_chart = alt.Chart(data).mark_line(
 
 ma_line = weight_chart.transform_window(
     rolling_mean='mean(Weight (kg))',
-    frame=[-7, 0]  # 7-day rolling average
-).mark_line(color='red', strokeDash=[5, 5]).encode(y='rolling_mean:Q')
+    frame=[-7, 0]).mark_line(color='red',
+                             strokeDash=[5, 5]).encode(y='rolling_mean:Q')
 st.altair_chart(weight_chart + ma_line, use_container_width=True)
 
 st.divider()
