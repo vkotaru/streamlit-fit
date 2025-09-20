@@ -32,7 +32,8 @@ class FitnessTrackerApp:
             csv_file_path (str): The path to the CSV file for storing data.
         """
         self.csv_file_path = csv_file_path
-        self.data = self._load_data()
+        if 'fitness_data' not in st.session_state:
+            st.session_state['fitness_data'] = self._load_data()
 
     def _load_data(self) -> pd.DataFrame:
         """Loads data from the CSV file or creates a new DataFrame."""
@@ -55,7 +56,7 @@ class FitnessTrackerApp:
     def _save_data(self):
         """Saves the current DataFrame to the CSV file."""
         # Ensure date format is consistent before saving
-        save_df = self.data.copy()
+        save_df = st.session_state['fitness_data'].copy()
         save_df['Date'] = pd.to_datetime(
             save_df['Date']).dt.strftime('%m/%d/%Y')
         save_df.to_csv(self.csv_file_path, index=False)
@@ -83,7 +84,8 @@ class FitnessTrackerApp:
         # Convert date input to datetime for comparison with DataFrame
         date_to_edit = pd.to_datetime(date_to_edit_input)
 
-        entry_data = self.data[self.data['Date'] == date_to_edit]
+        data = st.session_state['fitness_data']
+        entry_data = data[data['Date'] == date_to_edit]
 
         with st.form(key='entry_form'):
             weight_tab, calorie_tab, cardio_tab, strength_tab = st.tabs(
@@ -122,9 +124,7 @@ class FitnessTrackerApp:
                     "Cardio Activity",
                     self.CARDIO_ACTIVITY_LIST,
                     index=cardio_activity_index,
-                    placeholder=
-                    "Select cardio activity..."
-                )
+                    placeholder="Select cardio activity...")
 
                 cardio_duration = st.number_input(
                     "Cardio Duration (min)",
@@ -173,14 +173,15 @@ class FitnessTrackerApp:
 
                 if not entry_data.empty:
                     # Update existing row
-                    self.data.loc[self.data['Date'] == date_to_edit,
-                                  new_row_data.keys()] = new_row_data.values()
+                    data.loc[data['Date'] == date_to_edit,
+                             new_row_data.keys()] = new_row_data.values()
                 else:
                     # Add new row
                     new_df = pd.DataFrame([new_row_data])
-                    self.data = pd.concat([self.data, new_df],
-                                          ignore_index=True)
+                    data = pd.concat([data, new_df], ignore_index=True)
 
+                st.session_state['fitness_data'] = data.sort_values(
+                    by='Date').reset_index(drop=True)
                 self._save_data()
                 st.rerun()
 
@@ -188,15 +189,17 @@ class FitnessTrackerApp:
         """Renders the overview metrics and charts."""
         today = pd.to_datetime(datetime.now().date())
 
-        if self.data.empty:
+        data = st.session_state['fitness_data'].sort_values(by='Date',
+                                                            ascending=False)
+        if data.empty:
             st.info("No data available to display. Please add an entry.")
             return
 
         net_weight_cell, avg_cals_cell, col3, col4 = st.columns(4)
         with net_weight_cell:
-            latest_weight = self.data['Weight (kg)'].iloc[-1]
-            previous_weight = self.data['Weight (kg)'].iloc[-2] if len(
-                self.data) > 1 else 0
+            latest_weight = data['Weight (kg)'].iloc[-1]
+            previous_weight = data['Weight (kg)'].iloc[-2] if len(
+                data) > 1 else 0
             delta = round(latest_weight - previous_weight, 2)
             st.metric("Latest Weight",
                       f"{latest_weight} kg",
@@ -204,8 +207,8 @@ class FitnessTrackerApp:
                       delta_color="inverse")
         with avg_cals_cell:
             start_of_week = today - pd.Timedelta(days=6)
-            weekly_data = self.data[(self.data['Date'] >= start_of_week)
-                                    & (self.data['Date'] <= today)]
+            weekly_data = data[(data['Date'] >= start_of_week)
+                               & (data['Date'] <= today)]
             weekly_data['Daily Calories (kCal)'] = pd.to_numeric(
                 weekly_data['Daily Calories (kCal)'], errors='coerce')
             avg_calories = weekly_data['Daily Calories (kCal)'].mean()
@@ -237,10 +240,10 @@ class FitnessTrackerApp:
             "5 Years": 5 * 365
         }
         start_date = today - pd.Timedelta(days=days_map.get(
-            horizon)) if horizon != "All Time" else self.data['Date'].min()
+            horizon)) if horizon != "All Time" else data['Date'].min()
 
-        filtered_data = self.data[(self.data['Date'] >= start_date)
-                                  & (self.data['Date'] <= today)]
+        filtered_data = data[(data['Date'] >= start_date)
+                             & (data['Date'] <= today)]
 
         if filtered_data.empty:
             st.warning("No data in the selected time horizon.")
@@ -267,7 +270,7 @@ class FitnessTrackerApp:
 
     def _display_raw_data_table(self):
         """Renders the editable raw data table."""
-        st.header("Raw Data")
+        st.header("📜 Raw Data Log")
 
         config = {
             'Date':
@@ -281,7 +284,8 @@ class FitnessTrackerApp:
         }
 
         # Use a copy for display to avoid altering the main dataframe's date format
-        display_data = self.data.sort_values(by='Date', ascending=False)
+        display_data = st.session_state['fitness_data'].sort_values(
+            by='Date', ascending=False)
 
         if st.toggle("Enable editing"):
             edited_data = st.data_editor(display_data,
@@ -306,6 +310,18 @@ class FitnessTrackerApp:
         st.set_page_config(page_title="Fitness Dashboard",
                            page_icon="🏃",
                            layout="wide")
+
+        st.markdown(
+            """
+            <style>
+            [data-testid="stSidebar"] {
+                width: 100px;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+
         st.title("💪 Fitness Tracker")
         st.markdown("Easily visualize your daily fitness stats.")
 
