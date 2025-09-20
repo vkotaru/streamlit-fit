@@ -11,11 +11,11 @@ CSV_FILE_PATH = 'personal/fitness_data.csv'
 # CSV_FILE_PATH = 'fitness_example_data.csv'
 
 CARDIO_ACTIVITY_LIST = [
-    "🏃🏽‍♂️ Running", "🏃🏾 Trail Running", "🚵🏽‍♀️ Biking", "🏊🏽‍♂️ Swimming",
-    "🥾 Hiking", "🚶🏽‍♂️ Walking", "🏕️ Backpacking"
+    "None", "🏃🏽‍♂️ Running", "🏃🏾 Trail Running", "🚵🏽‍♀️ Biking",
+    "🏊🏽‍♂️ Swimming", "🥾 Hiking", "🚶🏽‍♂️ Walking", "🏕️ Backpacking"
 ]
 
-STRENGTH_ACTIVITY_LIST = ['Full Body', 'Arms', 'Legs', 'Core', 'Back']
+STRENGTH_ACTIVITY_LIST = ["None", 'Full Body', 'Arms', 'Legs', 'Core', 'Back']
 
 # ------------------------------------------------
 # Helper functions
@@ -36,7 +36,9 @@ def load_data():
         for col in columns:
             if col not in df.columns:
                 df[col] = None
+        df = df[columns]
         df['Date'] = pd.to_datetime(df['Date']).dt.date
+        df = df.sort_values(by='Date').reset_index(drop=True)
     except FileNotFoundError:
         print("CSV file not found. Creating a new DataFrame.")
         df = pd.DataFrame(columns=columns)
@@ -49,7 +51,7 @@ def save_data(df):
     st.success("Data saved successfully!")
 
 
-def get_value(entry_data, column, default_value):
+def get_value(entry_data, column, default_value=None):
     if not entry_data.empty:
         val = entry_data[column].iloc[0]
         if pd.notna(val):
@@ -123,10 +125,12 @@ with top_left_cell:
                                             None)
             cardio_activity_index = CARDIO_ACTIVITY_LIST.index(
                 cardio_activity_val
-            ) if cardio_activity_val in CARDIO_ACTIVITY_LIST else 0
-            cardio_activity = st.selectbox("Cardio Activity",
-                                           CARDIO_ACTIVITY_LIST,
-                                           index=cardio_activity_index)
+            ) if cardio_activity_val in CARDIO_ACTIVITY_LIST else None
+            cardio_activity = st.selectbox(
+                "Cardio Activity",
+                CARDIO_ACTIVITY_LIST,
+                index=cardio_activity_index,
+                placeholder="Select cardio activity...")
 
             cardio_duration = st.number_input("Cardio Duration (min)",
                                               value=get_value(
@@ -141,10 +145,12 @@ with top_left_cell:
                                               None)
             strength_activity_index = STRENGTH_ACTIVITY_LIST.index(
                 strength_activity_val
-            ) if strength_activity_val in STRENGTH_ACTIVITY_LIST else 0
-            strength_activity = st.selectbox("Strength Activity",
-                                             STRENGTH_ACTIVITY_LIST,
-                                             index=strength_activity_index)
+            ) if strength_activity_val in STRENGTH_ACTIVITY_LIST else None
+            strength_activity = st.selectbox(
+                "Strength Activity",
+                STRENGTH_ACTIVITY_LIST,
+                index=strength_activity_index,
+                placeholder="Select strength activity...")
 
             strength_duration = st.number_input(
                 "Strength Duration (min)",
@@ -186,12 +192,37 @@ with top_right_cell:
 
         data['Date'] = pd.to_datetime(data['Date'])
 
-        # Add a slider to select the number of days to display
-        days_to_show = st.slider('Select number of days to display', 1,
-                                 len(data), len(data))
+        # Time horizon selector
+        horizon_options = [
+            "1 Week", "2 Weeks", "1 Month", "3 Months", "6 Months", "1 Year",
+            "5 Years", "All Time"
+        ]
+        horizon = st.pills("Time horizon",
+                           options=horizon_options,
+                           default="3 Months")
 
-        # Filter the data based on the slider
-        filtered_data = data.head(days_to_show)
+        # Filter data based on horizon
+        today = pd.to_datetime(datetime.now().date())
+
+        if horizon == "1 Week":
+            start_date = today - pd.Timedelta(days=7)
+        elif horizon == "2 Weeks":
+            start_date = today - pd.Timedelta(days=14)
+        elif horizon == "1 Month":
+            start_date = today - pd.Timedelta(days=31)
+        elif horizon == "3 Months":
+            start_date = today - pd.Timedelta(days=90)
+        elif horizon == "6 Months":
+            start_date = today - pd.Timedelta(days=180)
+        elif horizon == "1 Year":
+            start_date = today - pd.Timedelta(days=365)
+        elif horizon == "5 Years":
+            start_date = today - pd.Timedelta(days=5 * 365)
+        else:  # All Time
+            start_date = data['Date'].min()
+
+        filtered_data = data[(data['Date'] >= start_date)
+                             & (data['Date'] <= today)]
 
         weight_chart = alt.Chart(filtered_data).mark_line().encode(
             alt.X("Date:T", axis=alt.Axis(title='Date', format='%Y-%m-%d')),
@@ -199,14 +230,13 @@ with top_right_cell:
         ).properties(height=300, title="Weight Trend")
 
         # Add moving average
-        show_ma = st.toggle("Show Moving Average",  value=True)
+        show_ma = st.toggle("Show Moving Average", value=True)
         if show_ma:
             ma_window = st.slider("Moving Average Window", 1, 30, 7)
-            filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(ma_window).mean()
+            filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(
+                ma_window).mean()
             ma_chart = alt.Chart(filtered_data).mark_line(color='red').encode(
-                alt.X("Date:T"),
-                alt.Y("MA:Q")
-            )
+                alt.X("Date:T"), alt.Y("MA:Q"))
             st.altair_chart(weight_chart + ma_chart)
         else:
             st.altair_chart(weight_chart)
