@@ -6,6 +6,13 @@ services:
     ports:
       - "8501:8501"
     restart: always
+    labels:
+      glance.name: Fitness
+      glance.icion: di:fittrackee
+      glance.url: http://10.0.0.150:8501
+      glance.description: Personal Fitness Tracker
+      glance.id: fitness
+
     volumes:
       - ./app.py:/app/app.py
       - ./requirements.txt:/app/requirements.txt
@@ -13,6 +20,9 @@ services:
 
   nginx:
     image: "nginx:latest"
+    labels:
+      glance.parent: fitness
+      glance.name: Nginx
     ports:
       - "80:80"
     volumes:
