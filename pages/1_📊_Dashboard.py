@@ -50,9 +50,9 @@ with col2:
         st.metric("Avg Calories (This Week)", "N/A")
 
 with col3:
-    total_cardio_time = pd.to_numeric(data['Cardio Duration (min)'],
+    total_cardio_time = pd.to_numeric(data['Cardio Duration (s)'],
                                       errors='coerce').sum()
-    st.metric("Total Cardio Time", f"{total_cardio_time / 60:.1f} hours")
+    st.metric("Total Cardio Time", f"{total_cardio_time / 3600:.1f} hours")
 
 st.divider()
 
