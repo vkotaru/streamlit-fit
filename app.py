@@ -99,16 +99,24 @@ class FitnessTrackerApp:
             entry_data = data[data['Date'] == date_to_edit]
 
             # Load ALL form values into session state from the DataFrame
-            st.session_state.weight_kg = self._get_value(entry_data, 'Weight (kg)', None)
-            st.session_state.waist_cm = self._get_value(entry_data, 'Waist (cm)', None)
-            st.session_state.daily_calories = self._get_value(entry_data, 'Daily Calories (kCal)', None)
-            st.session_state.carbs = self._get_value(entry_data, 'Carbs (g)', None)
-            st.session_state.protein = self._get_value(entry_data, 'Protein (g)', None)
+            st.session_state.weight_kg = self._get_value(
+                entry_data, 'Weight (kg)', None)
+            st.session_state.waist_cm = self._get_value(
+                entry_data, 'Waist (cm)', None)
+            st.session_state.daily_calories = self._get_value(
+                entry_data, 'Daily Calories (kCal)', None)
+            st.session_state.carbs = self._get_value(entry_data, 'Carbs (g)',
+                                                     None)
+            st.session_state.protein = self._get_value(entry_data,
+                                                       'Protein (g)', None)
             st.session_state.fat = self._get_value(entry_data, 'Fat (g)', None)
-            st.session_state.cardio_activity = self._get_value(entry_data, 'Cardio Activity', None)
-            st.session_state.cardio_calories = self._get_value(entry_data, 'Cardio Calories (kCal)', None)
-            st.session_state.strength_activity = self._get_value(entry_data, 'Strength Activity', None)
-            
+            st.session_state.cardio_activity = self._get_value(
+                entry_data, 'Cardio Activity', None)
+            st.session_state.cardio_calories = self._get_value(
+                entry_data, 'Cardio Calories (kCal)', None)
+            st.session_state.strength_activity = self._get_value(
+                entry_data, 'Strength Activity', None)
+
             # Handle Cardio Duration
             cardio_s = self._get_value(entry_data, 'Cardio Duration (s)', None)
             ch, cm, cs = (None, None, None)
@@ -117,7 +125,8 @@ class FitnessTrackerApp:
             st.session_state.ch, st.session_state.cm, st.session_state.cs = ch, cm, cs
 
             # Handle Strength Duration
-            strength_s = self._get_value(entry_data, 'Strength Duration (s)', None)
+            strength_s = self._get_value(entry_data, 'Strength Duration (s)',
+                                         None)
             sh, sm, ss = (None, None, None)
             if strength_s is not None:
                 sh, sm, ss = self._seconds_to_hms(int(strength_s))
@@ -127,11 +136,11 @@ class FitnessTrackerApp:
         with st.form(key='entry_form'):
             weight_tab, calorie_tab, cardio_tab, strength_tab = st.tabs(
                 ["Weight", "Calories", "Cardio", "Strength"])
-            
+
             with weight_tab:
                 st.number_input("Weight (kg)", key='weight_kg', format="%.2f")
                 st.number_input("Waist (cm)", key='waist_cm', format="%.2f")
-            
+
             with calorie_tab:
                 st.number_input("Daily Calories (kCal)", key='daily_calories')
                 st.number_input("Carbs (g)", key='carbs')
@@ -139,41 +148,79 @@ class FitnessTrackerApp:
                 st.number_input("Fat (g)", key='fat')
 
             with cardio_tab:
-                st.selectbox("Cardio Activity", self.CARDIO_ACTIVITY_LIST,
-                            key='cardio_activity')
-
+                st.selectbox("Cardio Activity",
+                             self.CARDIO_ACTIVITY_LIST,
+                             key='cardio_activity')
 
                 st.write("Cardio Duration")
                 c1, c2, c3 = st.columns(3)
-                c1.number_input("Hours", min_value=0, max_value=23, step=1, key='ch')
-                c2.number_input("Minutes", min_value=0, max_value=59, step=1, key='cm')
-                c3.number_input("Seconds", min_value=0, max_value=59, step=1, key='cs')
-                st.number_input("Cardio Calories (kCal)", key='cardio_calories')
+                c1.number_input("Hours",
+                                min_value=0,
+                                max_value=23,
+                                step=1,
+                                key='ch')
+                c2.number_input("Minutes",
+                                min_value=0,
+                                max_value=59,
+                                step=1,
+                                key='cm')
+                c3.number_input("Seconds",
+                                min_value=0,
+                                max_value=59,
+                                step=1,
+                                key='cs')
+                st.number_input("Cardio Calories (kCal)",
+                                key='cardio_calories')
 
             with strength_tab:
-                st.selectbox("Strength Activity", self.STRENGTH_ACTIVITY_LIST,
-                            key='strength_activity')
+                st.selectbox("Strength Activity",
+                             self.STRENGTH_ACTIVITY_LIST,
+                             key='strength_activity')
                 st.write("Strength Duration")
                 s1, s2, s3 = st.columns(3)
-                s1.number_input("Hours", min_value=0, max_value=23, step=1, key='sh')
-                s2.number_input("Minutes", min_value=0, max_value=59, step=1, key='sm')
-                s3.number_input("Seconds", min_value=0, max_value=59, step=1, key='ss')
+                s1.number_input("Hours",
+                                min_value=0,
+                                max_value=23,
+                                step=1,
+                                key='sh')
+                s2.number_input("Minutes",
+                                min_value=0,
+                                max_value=59,
+                                step=1,
+                                key='sm')
+                s3.number_input("Seconds",
+                                min_value=0,
+                                max_value=59,
+                                step=1,
+                                key='ss')
 
             # --- SAVE LOGIC ---
             submitted = st.form_submit_button("Save")
             if submitted:
                 # On submission, read all values from session_state to save them
                 date_to_edit = pd.to_datetime(st.session_state.form_date)
-                entry_exists = not st.session_state['fitness_data'][st.session_state['fitness_data']['Date'] == date_to_edit].empty
+                entry_exists = not st.session_state['fitness_data'][
+                    st.session_state['fitness_data']['Date'] ==
+                    date_to_edit].empty
 
                 # Calculate total seconds from state
                 cardio_total_s = None
-                if not all(v is None for v in [st.session_state.ch, st.session_state.cm, st.session_state.cs]):
-                    cardio_total_s = (st.session_state.ch or 0) * 3600 + (st.session_state.cm or 0) * 60 + (st.session_state.cs or 0)
-                
+                if not all(v is None for v in [
+                        st.session_state.ch, st.session_state.cm,
+                        st.session_state.cs
+                ]):
+                    cardio_total_s = (st.session_state.ch or 0) * 3600 + (
+                        st.session_state.cm or 0) * 60 + (st.session_state.cs
+                                                          or 0)
+
                 strength_total_s = None
-                if not all(v is None for v in [st.session_state.sh, st.session_state.sm, st.session_state.ss]):
-                    strength_total_s = (st.session_state.sh or 0) * 3600 + (st.session_state.sm or 0) * 60 + (st.session_state.ss or 0)
+                if not all(v is None for v in [
+                        st.session_state.sh, st.session_state.sm,
+                        st.session_state.ss
+                ]):
+                    strength_total_s = (st.session_state.sh or 0) * 3600 + (
+                        st.session_state.sm or 0) * 60 + (st.session_state.ss
+                                                          or 0)
 
                 new_row_data = {
                     "Date": date_to_edit,
@@ -192,14 +239,19 @@ class FitnessTrackerApp:
 
                 current_data = st.session_state['fitness_data']
                 if entry_exists:
-                    current_data.loc[current_data['Date'] == date_to_edit, new_row_data.keys()] = new_row_data.values()
+                    current_data.loc[
+                        current_data['Date'] == date_to_edit,
+                        new_row_data.keys()] = new_row_data.values()
                 else:
                     new_df = pd.DataFrame([new_row_data])
-                    current_data = pd.concat([current_data, new_df], ignore_index=True)
+                    current_data = pd.concat([current_data, new_df],
+                                             ignore_index=True)
 
-                st.session_state['fitness_data'] = current_data.sort_values(by='Date').reset_index(drop=True)
+                st.session_state['fitness_data'] = current_data.sort_values(
+                    by='Date').reset_index(drop=True)
                 self._save_data()
                 st.rerun()
+
     def _display_overview(self):
         """Renders the overview metrics and charts."""
         today = pd.to_datetime(datetime.now().date())
@@ -263,20 +315,28 @@ class FitnessTrackerApp:
             st.warning("No data in the selected time horizon.")
             return
 
-        weight_chart = alt.Chart(filtered_data).mark_line(
-            interpolate='basis').encode(
+        weight_chart_base = alt.Chart(
+            filtered_data[filtered_data['Weight (kg)'].notna()]).encode(
                 alt.X("Date:T", axis=alt.Axis(title='Date',
                                               format='%Y-%m-%d')),
-                alt.Y("Weight (kg):Q").scale(zero=False),
-            ).properties(height=300, title="Weight Trend").interactive()
+                alt.Y("Weight (kg):Q").scale(domain=[89, 95]))
+
+        area_chart = weight_chart_base.mark_area(interpolate='basis',
+                                                 opacity=0.3)
+
+        line_chart = weight_chart_base.mark_line(interpolate='basis')
+
+        weight_chart = (area_chart + line_chart).properties(
+            height=300, title="Weight Trend").interactive()
         show_ma = st.toggle("Show Moving Average", value=True)
         if show_ma:
             ma_window = st.slider("Moving Average Window", 1, 30, 7)
             filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(
                 ma_window, min_periods=1).mean()
-            ma_chart = alt.Chart(filtered_data).mark_line(
-                color='red',
-                interpolate='basis').encode(alt.X("Date:T"), alt.Y("MA:Q"))
+            ma_chart = alt.Chart(
+                filtered_data[filtered_data['MA'].notna()]).mark_line(
+                    color='red',
+                    interpolate='basis').encode(alt.X("Date:T"), alt.Y("MA:Q"))
             st.altair_chart(weight_chart + ma_chart, use_container_width=True)
         else:
             st.altair_chart(weight_chart, use_container_width=True)
