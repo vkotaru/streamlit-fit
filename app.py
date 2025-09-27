@@ -297,7 +297,7 @@ class FitnessTrackerApp:
         ]
         horizon = st.pills("Time horizon",
                            options=horizon_options,
-                           default="3 Months")
+                           default="1 Month")
         days_map = {
             "1 Week": 7,
             "2 Weeks": 14,
@@ -314,6 +314,14 @@ class FitnessTrackerApp:
         if filtered_data.empty:
             st.warning("No data in the selected time horizon.")
             return
+        
+        
+        interpolate_options = [
+            "basis", "linear"
+        ]
+        interpolate = st.pills("Interpolation",
+                           options=interpolate_options,
+                           default="linear")
 
         weight_chart_base = alt.Chart(
             filtered_data[filtered_data['Weight (kg)'].notna()]).encode(
@@ -321,10 +329,10 @@ class FitnessTrackerApp:
                                               format='%Y-%m-%d')),
                 alt.Y("Weight (kg):Q").scale(domain=[89, 95]))
 
-        area_chart = weight_chart_base.mark_area(interpolate='basis',
+        area_chart = weight_chart_base.mark_area(interpolate=interpolate,
                                                  opacity=0.3)
 
-        line_chart = weight_chart_base.mark_line(interpolate='basis')
+        line_chart = weight_chart_base.mark_line(interpolate=interpolate)
 
         weight_chart = (area_chart + line_chart).properties(
             height=300, title="Weight Trend").interactive()
@@ -336,7 +344,7 @@ class FitnessTrackerApp:
             ma_chart = alt.Chart(
                 filtered_data[filtered_data['MA'].notna()]).mark_line(
                     color='red',
-                    interpolate='basis').encode(alt.X("Date:T"), alt.Y("MA:Q"))
+                    interpolate=interpolate).encode(alt.X("Date:T"), alt.Y("MA:Q"))
             st.altair_chart(weight_chart + ma_chart, use_container_width=True)
         else:
             st.altair_chart(weight_chart, use_container_width=True)
