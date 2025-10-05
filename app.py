@@ -16,48 +16,89 @@ class FitnessTrackerApp:
         "🏊🏽‍♂️ Swimming", "🥾 Hiking", "🚶🏽‍♂️ Walking", "🏕️ Backpacking"
     ]
     STRENGTH_ACTIVITY_LIST = [
-        "None", 'Full Body', 'Arms', 'Legs', 'Core', 'Back'
+        "None", '🏋🏽‍♂️ Full Body', '💪🏽 Arms', '🦵🏽 Legs', '🧎🏽‍♂️ Core',
+        '🏌🏽‍♂️ Back'
     ]
     # NOTE: The duration columns will store total SECONDS.
-    COLUMNS = [
-        "Date", "Weight (kg)", "Waist (cm)", "Daily Calories (kCal)",
-        "Carbs (g)", "Protein (g)", "Fat (g)", "Cardio Activity",
-        "Cardio Duration (s)", "Cardio Calories (kCal)", "Strength Activity",
-        "Strength Duration (s)"
+    METRICS_COLUMNS = [
+        "Date",
+        "Weight (kg)",
+        "Waist (cm)",
+        "Daily Calories (kCal)",
+        "Carbs (g)",
+        "Protein (g)",
+        "Fat (g)",
+        "Activte Calories (kCal)",
+    ]
+    ACTIVITIES_COLUMNS = [
+        "Date", "Type", "Activity", "Duration (s)", "Distance (mi)",
+        "Calories (kCal)"
     ]
 
-    def __init__(self, csv_file_path: str):
+    def __init__(self, metrics_path: str, activites_path: str):
         """
         Initializes the FitnessTrackerApp.
         Args:
             csv_file_path (str): The path to the CSV file for storing data.
         """
-        self.csv_file_path = csv_file_path
-        if 'fitness_data' not in st.session_state:
-            st.session_state['fitness_data'] = self._load_data()
+        self._metrics_file_path = metrics_path
+        self._activites_file_path = activites_path
+        if 'metrics' not in st.session_state:
+            st.session_state['metrics'] = self._load_metrics_data()
+        if 'activities' not in st.session_state:
+            st.session_state['activities'] = self._load_activities_data()
 
-    def _load_data(self) -> pd.DataFrame:
+    def _load_metrics_data(self) -> pd.DataFrame:
         """Loads data from the CSV file or creates a new DataFrame."""
         try:
-            df = pd.read_csv(self.csv_file_path)
-            for col in self.COLUMNS:
+            df = pd.read_csv(self._metrics_file_path)
+            for col in self.METRICS_COLUMNS:
                 if col not in df.columns:
                     df[col] = None
-            df = df[self.COLUMNS]
+            df = df[self.METRICS_COLUMNS]
             df['Date'] = pd.to_datetime(df['Date'])
         except FileNotFoundError:
             print("CSV file not found. Creating a new DataFrame.")
-            df = pd.DataFrame(columns=self.COLUMNS)
+            df = pd.DataFrame(columns=self.METRICS_COLUMNS)
             df['Date'] = pd.to_datetime(df['Date'])
+        return df.sort_values(by='Date').reset_index(drop=True)
 
+    def _load_activities_data(self) -> pd.DataFrame:
+        """Loads activites from csv into a dataframe.
+
+        Returns:
+            pd.DataFrame: _description_
+        """
+        try:
+            df = pd.read_csv(self._activites_file_path,
+                           dtype={
+                               "Type": "str",
+                               "Activity": "str"
+                           })
+            for col in self.ACTIVITIES_COLUMNS:
+                if col not in df.columns:
+                    df[col] = None
+            df = df[self.ACTIVITIES_COLUMNS]
+            df['Date'] = pd.to_datetime(df['Date'])
+        except FileNotFoundError:
+            print("CSV file not found. Creating a new DataFrame.")
+            df = pd.DataFrame(columns=self.ACTIVITIES_COLUMNS)
+            df['Date'] = pd.to_datetime(df['Date'])
         return df.sort_values(by='Date').reset_index(drop=True)
 
     def _save_data(self):
         """Saves the current DataFrame to the CSV file."""
-        save_df = st.session_state['fitness_data'].copy()
-        save_df['Date'] = pd.to_datetime(
-            save_df['Date']).dt.strftime('%m/%d/%Y')
-        save_df.to_csv(self.csv_file_path, index=False)
+        print("Saving data... to ")
+        save_metrics_df = st.session_state['metrics'].copy()
+        save_metrics_df['Date'] = pd.to_datetime(
+            save_metrics_df['Date']).dt.strftime('%m/%d/%Y')
+        print(f"Saving measurements to {self._metrics_file_path}")
+        save_metrics_df.to_csv(self._metrics_file_path, index=False)
+        save_activities_df = st.session_state['activities'].copy()
+        save_activities_df['Date'] = pd.to_datetime(
+            save_activities_df['Date']).dt.strftime('%m/%d/%Y')
+        print(f"Saving activities to {self._activites_file_path}")
+        save_activities_df.to_csv(self._activites_file_path, index=False)
         st.success("Data saved successfully!")
 
     def _get_value(self,
@@ -87,176 +128,174 @@ class FitnessTrackerApp:
 
     def _display_input_form(self):
         """Renders the input form for adding or editing an entry."""
-        st.subheader("Add/Edit Entry")
         date_to_edit_input = st.date_input("Date", datetime.now().date())
 
-        # --- STATE MANAGEMENT LOGIC ---
-        # This block now only runs ONCE when the selected date changes.
+        # --- STATE MANAGEMENT LOGIC for Metrics ---
         if 'form_date' not in st.session_state or st.session_state.form_date != date_to_edit_input:
             st.session_state.form_date = date_to_edit_input
             date_to_edit = pd.to_datetime(date_to_edit_input)
-            data = st.session_state['fitness_data']
-            entry_data = data[data['Date'] == date_to_edit]
+            metrics_data = st.session_state['metrics']
+            entry_data = metrics_data[metrics_data['Date'] == date_to_edit]
 
-            # Load ALL form values into session state from the DataFrame
+            # Load metrics form values into session state from the DataFrame
             st.session_state.weight_kg = self._get_value(
-                entry_data, 'Weight (kg)', None)
+                entry_data, 'Weight (kg)', 0.0)
             st.session_state.waist_cm = self._get_value(
-                entry_data, 'Waist (cm)', None)
+                entry_data, 'Waist (cm)', 0.0)
             st.session_state.daily_calories = self._get_value(
-                entry_data, 'Daily Calories (kCal)', None)
+                entry_data, 'Daily Calories (kCal)', 0)
             st.session_state.carbs = self._get_value(entry_data, 'Carbs (g)',
-                                                     None)
+                                                     0)
             st.session_state.protein = self._get_value(entry_data,
-                                                       'Protein (g)', None)
-            st.session_state.fat = self._get_value(entry_data, 'Fat (g)', None)
-            st.session_state.cardio_activity = self._get_value(
-                entry_data, 'Cardio Activity', None)
-            st.session_state.cardio_calories = self._get_value(
-                entry_data, 'Cardio Calories (kCal)', None)
-            st.session_state.strength_activity = self._get_value(
-                entry_data, 'Strength Activity', None)
-
-            # Handle Cardio Duration
-            cardio_s = self._get_value(entry_data, 'Cardio Duration (s)', None)
-            ch, cm, cs = (None, None, None)
-            if cardio_s is not None:
-                ch, cm, cs = self._seconds_to_hms(int(cardio_s))
-            st.session_state.ch, st.session_state.cm, st.session_state.cs = ch, cm, cs
-
-            # Handle Strength Duration
-            strength_s = self._get_value(entry_data, 'Strength Duration (s)',
-                                         None)
-            sh, sm, ss = (None, None, None)
-            if strength_s is not None:
-                sh, sm, ss = self._seconds_to_hms(int(strength_s))
-            st.session_state.sh, st.session_state.sm, st.session_state.ss = sh, sm, ss
+                                                       'Protein (g)', 0)
+            st.session_state.fat = self._get_value(entry_data, 'Fat (g)', 0)
 
         # --- FORM RENDERING ---
-        with st.form(key='entry_form'):
-            weight_tab, calorie_tab, cardio_tab, strength_tab = st.tabs(
-                ["Weight", "Calories", "Cardio", "Strength"])
+        body_metrics_tab, nutrition_tab, activities_tab = st.tabs(
+            ["Body Metrics", "Nutrition", "Activities"])
 
-            with weight_tab:
+        with body_metrics_tab:
+            with st.form(key='body_metrics_form', border=False):
                 st.number_input("Weight (kg)", key='weight_kg', format="%.2f")
                 st.number_input("Waist (cm)", key='waist_cm', format="%.2f")
+                submitted = st.form_submit_button("Save Body Metrics")
+                if submitted:
+                    date_to_edit = pd.to_datetime(st.session_state.form_date)
+                    metrics_df = st.session_state['metrics']
+                    entry_exists = not metrics_df[metrics_df['Date'] ==
+                                                  date_to_edit].empty
 
-            with calorie_tab:
-                st.number_input("Daily Calories (kCal)", key='daily_calories')
-                st.number_input("Carbs (g)", key='carbs')
-                st.number_input("Protein (g)", key='protein')
-                st.number_input("Fat (g)", key='fat')
+                    new_row_data = {
+                        "Date": date_to_edit,
+                        "Weight (kg)": st.session_state.weight_kg,
+                        "Waist (cm)": st.session_state.waist_cm,
+                    }
 
-            with cardio_tab:
-                st.selectbox("Cardio Activity",
-                             self.CARDIO_ACTIVITY_LIST,
-                             key='cardio_activity')
+                    if entry_exists:
+                        for key, value in new_row_data.items():
+                            metrics_df.loc[metrics_df['Date'] == date_to_edit,
+                                           key] = value
+                    else:
+                        full_new_row = {
+                            col: None
+                            for col in self.METRICS_COLUMNS
+                        }
+                        full_new_row.update(new_row_data)
+                        new_df = pd.DataFrame([full_new_row])
+                        metrics_df = pd.concat([metrics_df, new_df],
+                                               ignore_index=True)
 
-                st.write("Cardio Duration")
-                c1, c2, c3 = st.columns(3)
-                c1.number_input("Hours",
-                                min_value=0,
-                                max_value=23,
-                                step=1,
-                                key='ch')
-                c2.number_input("Minutes",
-                                min_value=0,
-                                max_value=59,
-                                step=1,
-                                key='cm')
-                c3.number_input("Seconds",
-                                min_value=0,
-                                max_value=59,
-                                step=1,
-                                key='cs')
-                st.number_input("Cardio Calories (kCal)",
-                                key='cardio_calories')
+                    st.session_state['metrics'] = metrics_df.sort_values(
+                        by='Date').reset_index(drop=True)
+                    self._save_data()
+                    st.rerun()
 
-            with strength_tab:
-                st.selectbox("Strength Activity",
-                             self.STRENGTH_ACTIVITY_LIST,
-                             key='strength_activity')
-                st.write("Strength Duration")
-                s1, s2, s3 = st.columns(3)
-                s1.number_input("Hours",
-                                min_value=0,
-                                max_value=23,
-                                step=1,
-                                key='sh')
-                s2.number_input("Minutes",
-                                min_value=0,
-                                max_value=59,
-                                step=1,
-                                key='sm')
-                s3.number_input("Seconds",
-                                min_value=0,
-                                max_value=59,
-                                step=1,
-                                key='ss')
+        with nutrition_tab:
+            with st.form(key='nutrition_form', border=False):
+                st.number_input("Daily Calories (kCal)",
+                                key='daily_calories',
+                                step=1)
+                st.number_input("Carbs (g)", key='carbs', step=1)
+                st.number_input("Protein (g)", key='protein', step=1)
+                st.number_input("Fat (g)", key='fat', step=1)
+                submitted = st.form_submit_button("Save Nutrition")
+                if submitted:
+                    date_to_edit = pd.to_datetime(st.session_state.form_date)
+                    metrics_df = st.session_state['metrics']
+                    entry_exists = not metrics_df[metrics_df['Date'] ==
+                                                  date_to_edit].empty
 
-            # --- SAVE LOGIC ---
-            submitted = st.form_submit_button("Save")
-            if submitted:
-                # On submission, read all values from session_state to save them
-                date_to_edit = pd.to_datetime(st.session_state.form_date)
-                entry_exists = not st.session_state['fitness_data'][
-                    st.session_state['fitness_data']['Date'] ==
-                    date_to_edit].empty
+                    new_row_data = {
+                        "Date": date_to_edit,
+                        "Daily Calories (kCal)":
+                        st.session_state.daily_calories,
+                        "Carbs (g)": st.session_state.carbs,
+                        "Protein (g)": st.session_state.protein,
+                        "Fat (g)": st.session_state.fat,
+                    }
 
-                # Calculate total seconds from state
-                cardio_total_s = None
-                if not all(v is None for v in [
-                        st.session_state.ch, st.session_state.cm,
-                        st.session_state.cs
-                ]):
-                    cardio_total_s = (st.session_state.ch or 0) * 3600 + (
-                        st.session_state.cm or 0) * 60 + (st.session_state.cs
-                                                          or 0)
+                    if entry_exists:
+                        for key, value in new_row_data.items():
+                            metrics_df.loc[metrics_df['Date'] == date_to_edit,
+                                           key] = value
+                    else:
+                        full_new_row = {
+                            col: None
+                            for col in self.METRICS_COLUMNS
+                        }
+                        full_new_row.update(new_row_data)
+                        new_df = pd.DataFrame([full_new_row])
+                        metrics_df = pd.concat([metrics_df, new_df],
+                                               ignore_index=True)
 
-                strength_total_s = None
-                if not all(v is None for v in [
-                        st.session_state.sh, st.session_state.sm,
-                        st.session_state.ss
-                ]):
-                    strength_total_s = (st.session_state.sh or 0) * 3600 + (
-                        st.session_state.sm or 0) * 60 + (st.session_state.ss
-                                                          or 0)
+                    st.session_state['metrics'] = metrics_df.sort_values(
+                        by='Date').reset_index(drop=True)
+                    self._save_data()
+                    st.rerun()
 
-                new_row_data = {
-                    "Date": date_to_edit,
-                    "Weight (kg)": st.session_state.weight_kg,
-                    "Waist (cm)": st.session_state.waist_cm,
-                    "Daily Calories (kCal)": st.session_state.daily_calories,
-                    "Carbs (g)": st.session_state.carbs,
-                    "Protein (g)": st.session_state.protein,
-                    "Fat (g)": st.session_state.fat,
-                    "Cardio Activity": st.session_state.cardio_activity,
-                    "Cardio Duration (s)": cardio_total_s,
-                    "Cardio Calories (kCal)": st.session_state.cardio_calories,
-                    "Strength Activity": st.session_state.strength_activity,
-                    "Strength Duration (s)": strength_total_s,
-                }
-
-                current_data = st.session_state['fitness_data']
-                if entry_exists:
-                    current_data.loc[
-                        current_data['Date'] == date_to_edit,
-                        new_row_data.keys()] = new_row_data.values()
+        with activities_tab:
+            activity_type = st.selectbox("Activity Type",
+                                         ["Cardio", "Strength"])
+            with st.form(key='activity_form', border=False):
+                if activity_type == "Cardio":
+                    activity = st.selectbox("Activity",
+                                            self.CARDIO_ACTIVITY_LIST)
                 else:
-                    new_df = pd.DataFrame([new_row_data])
-                    current_data = pd.concat([current_data, new_df],
-                                             ignore_index=True)
+                    activity = st.selectbox("Activity",
+                                            self.STRENGTH_ACTIVITY_LIST)
 
-                st.session_state['fitness_data'] = current_data.sort_values(
-                    by='Date').reset_index(drop=True)
-                self._save_data()
-                st.rerun()
+                c1, c2, c3 = st.columns(3)
+                hours = c1.number_input("hrs",
+                                        min_value=0,
+                                        max_value=23,
+                                        step=1,
+                                        key='act_h')
+                minutes = c2.number_input("mins",
+                                          min_value=0,
+                                          max_value=59,
+                                          step=1,
+                                          key='act_m')
+                seconds = c3.number_input("secs",
+                                          min_value=0,
+                                          max_value=59,
+                                          step=1,
+                                          key='act_s')
+
+                distance = st.number_input("Distance (mi)",
+                                           format="%.2f",
+                                           key='act_dist')
+                calories = st.number_input("Calories (kCal)",
+                                           key='act_cals',
+                                           step=1)
+
+                submitted = st.form_submit_button("Add Activity")
+                if submitted:
+                    duration_s = (hours * 3600) + (minutes * 60) + seconds
+
+                    new_activity_data = {
+                        "Date": pd.to_datetime(st.session_state.form_date),
+                        "Type": activity_type,
+                        "Activity": activity,
+                        "Duration (s)": duration_s,
+                        "Distance (mi)": distance,
+                        "Calories (kCal)": calories,
+                    }
+
+                    activities_df = st.session_state['activities']
+                    new_df = pd.DataFrame([new_activity_data])
+                    activities_df = pd.concat([activities_df, new_df],
+                                              ignore_index=True)
+
+                    st.session_state['activities'] = activities_df.sort_values(
+                        by='Date').reset_index(drop=True)
+                    self._save_data()
+                    st.success("Activity added!")
 
     def _display_overview(self):
         """Renders the overview metrics and charts."""
         today = pd.to_datetime(datetime.now().date())
-        data = st.session_state['fitness_data'].sort_values(by='Date',
-                                                            ascending=False)
+        data = st.session_state['metrics'].sort_values(by='Date',
+                                                       ascending=False)
         data['Date'] = pd.to_datetime(data['Date'])
         if data.empty:
             st.info("No data available to display. Please add an entry.")
@@ -295,9 +334,6 @@ class FitnessTrackerApp:
             "1 Week", "2 Weeks", "1 Month", "3 Months", "6 Months", "1 Year",
             "5 Years", "All Time"
         ]
-        horizon = st.pills("Time horizon",
-                           options=horizon_options,
-                           default="1 Month")
         days_map = {
             "1 Week": 7,
             "2 Weeks": 14,
@@ -307,21 +343,34 @@ class FitnessTrackerApp:
             "1 Year": 365,
             "5 Years": 5 * 365
         }
-        start_date = today - pd.Timedelta(days=days_map.get(
-            horizon)) if horizon != "All Time" else data['Date'].min()
-        filtered_data = data[(data['Date'] >= start_date)
-                             & (data['Date'] <= today)]
-        if filtered_data.empty:
-            st.warning("No data in the selected time horizon.")
-            return
-        
-        
-        interpolate_options = [
-            "basis", "linear"
-        ]
-        interpolate = st.pills("Interpolation",
-                           options=interpolate_options,
-                           default="linear")
+
+        interpolation_cell, mov_avg_togg_cell, mov_avg_num_cell, time_horizon_cell = st.columns(
+            4)
+        with interpolation_cell:
+            interpolate_options = ["basis", "linear"]
+            interpolate = st.pills("Interpolation",
+                                   options=interpolate_options,
+                                   default="linear")
+        with mov_avg_togg_cell:
+            show_ma = st.toggle("Show Moving Average", value=True)
+
+        with mov_avg_num_cell:
+            ma_window = st.number_input('Moving Avg Window (days)',
+                                        value=7,
+                                        min_value=1)
+
+        with time_horizon_cell:
+            horizon = st.selectbox("Time horizon",
+                                   options=horizon_options,
+                                   index=2)
+
+            start_date = today - pd.Timedelta(days=days_map.get(
+                horizon)) if horizon != "All Time" else data['Date'].min()
+            filtered_data = data[(data['Date'] >= start_date)
+                                 & (data['Date'] <= today)]
+            if filtered_data.empty:
+                st.warning("No data in the selected time horizon.")
+                return
 
         weight_chart_base = alt.Chart(
             filtered_data[filtered_data['Weight (kg)'].notna()]).encode(
@@ -336,15 +385,14 @@ class FitnessTrackerApp:
 
         weight_chart = (area_chart + line_chart).properties(
             height=300, title="Weight Trend").interactive()
-        show_ma = st.toggle("Show Moving Average", value=True)
         if show_ma:
-            ma_window = st.slider("Moving Average Window", 1, 30, 7)
             filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(
                 ma_window, min_periods=1).mean()
             ma_chart = alt.Chart(
                 filtered_data[filtered_data['MA'].notna()]).mark_line(
                     color='red',
-                    interpolate=interpolate).encode(alt.X("Date:T"), alt.Y("MA:Q"))
+                    interpolate=interpolate).encode(alt.X("Date:T"),
+                                                    alt.Y("MA:Q"))
             st.altair_chart(weight_chart + ma_chart, use_container_width=True)
         else:
             st.altair_chart(weight_chart, use_container_width=True)
@@ -353,42 +401,72 @@ class FitnessTrackerApp:
         """Renders the editable raw data table."""
         st.header("📜 Raw Data Log")
 
-        config = {
-            'Date':
-            st.column_config.DateColumn('Date', format="YYYY-MM-DD"),
-            "Cardio Activity":
-            st.column_config.SelectboxColumn(
-                "Cardio Activity", options=self.CARDIO_ACTIVITY_LIST),
-            "Strength Activity":
-            st.column_config.SelectboxColumn(
-                "Strength Activity", options=self.STRENGTH_ACTIVITY_LIST),
-            "Cardio Duration (s)":
-            st.column_config.NumberColumn("Cardio Duration (s)",
-                                          help="Duration in total seconds."),
-            "Strength Duration (s)":
-            st.column_config.NumberColumn("Strength Duration (s)",
-                                          help="Duration in total seconds.")
-        }
+        metrics_tab, activities_tab = st.tabs(
+            ["Metrics & Measurements", "Activities"])
+        with metrics_tab:
+            metrics_df = st.session_state['metrics'].sort_values(
+                by='Date', ascending=False)
+            config = {
+                'Date': st.column_config.DateColumn('Date',
+                                                    format="YYYY-MM-DD"),
+            }
+            if st.toggle("Enable Measurements editing"):
+                edited_metrics_df = st.data_editor(metrics_df,
+                                                   column_config=config,
+                                                   use_container_width=True,
+                                                   hide_index=True,
+                                                   key="metrics_editor")
+                if st.button("Save Measurement Changes", key="save_metrics_button"):
+                    st.write('saving data')
+                    edited_metrics_df['Date'] = pd.to_datetime(
+                        edited_metrics_df['Date'])
+                    st.session_state[
+                        'metrics'] = edited_metrics_df.sort_values(
+                            by='Date').reset_index(drop=True)
+                    self._save_data()
+                    st.rerun()
+            else:
+                st.dataframe(metrics_df,
+                             column_config=config,
+                             use_container_width=True,
+                             hide_index=True)
 
-        display_df = st.session_state['fitness_data'].sort_values(
-            by='Date', ascending=False)
-
-        if st.toggle("Enable editing"):
-            edited_df = st.data_editor(display_df,
-                                       column_config=config,
-                                       use_container_width=True,
-                                       hide_index=True)
-            if st.button("Save Changes"):
-                edited_df['Date'] = pd.to_datetime(edited_df['Date'])
-                st.session_state['fitness_data'] = edited_df.sort_values(
-                    by='Date').reset_index(drop=True)
-                self._save_data()
-                st.rerun()
-        else:
-            st.dataframe(display_df,
-                         column_config=config,
-                         use_container_width=True,
-                         hide_index=True)
+        with activities_tab:
+            activities_df = st.session_state['activities'].sort_values(
+                by='Date', ascending=False)
+            config = {
+                "Date":
+                st.column_config.DateColumn('Date', format="YYYY-MM-DD"),
+                "Type":
+                st.column_config.SelectboxColumn(
+                    "Type", options=["Cardio", "Strength"]),
+                "Activity":
+                st.column_config.SelectboxColumn(
+                    "Activity",
+                    options=self.CARDIO_ACTIVITY_LIST +
+                    self.STRENGTH_ACTIVITY_LIST),
+            }
+            if st.toggle("Enable Activities editing"):
+                edited_activities_df = st.data_editor(activities_df,
+                                                      column_config=config,
+                                                      use_container_width=True,
+                                                      hide_index=True,
+                                                      key="activities_editor")
+                if st.button("Save Activity Changes", key="save_activities_button"):
+                    st.write('saving data')
+                    edited_activities_df['Date'] = pd.to_datetime(
+                        edited_activities_df['Date'])
+                    st.session_state[
+                        'activities'] = edited_activities_df.sort_values(
+                            by='Date').reset_index(drop=True)
+                    self._save_data()
+                    st.rerun()
+            else:
+                st.dataframe(activities_df,
+                             column_config=config,
+                             use_container_width=True,
+                             hide_index=True)
+        return
 
     def run(self):
         """Main method to run the Streamlit application."""
@@ -399,18 +477,19 @@ class FitnessTrackerApp:
             """<style>[data-testid="stSidebar"] {width: 100px;}</style>""",
             unsafe_allow_html=True)
         st.title("💪 Fitness Tracker")
-        st.markdown("Easily visualize your daily fitness stats.")
-
         top_row = st.columns([1, 3])
-        with top_row[0].container(border=True):
+        with top_row[0].container(border=False):
             self._display_input_form()
-        with top_row[1].container(border=True):
+        with top_row[1].container(border=False):
             self._display_overview()
+            pass
         st.divider()
         self._display_raw_data_table()
 
 
 if __name__ == "__main__":
-    CSV_FILE_PATH = 'personal/fitness_data.csv'
-    app = FitnessTrackerApp(csv_file_path=CSV_FILE_PATH)
+    FITNESS_CSV_PATH = 'personal/metrics.csv'
+    ACTIVIES_CSV_PATH = 'personal/activities.csv'
+    app = FitnessTrackerApp(metrics_path=FITNESS_CSV_PATH,
+                            activites_path=ACTIVIES_CSV_PATH)
     app.run()
