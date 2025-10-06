@@ -28,7 +28,7 @@ class FitnessTrackerApp:
         "Carbs (g)",
         "Protein (g)",
         "Fat (g)",
-        "Activte Calories (kCal)",
+        "Active Calories (kCal)",
     ]
     ACTIVITIES_COLUMNS = [
         "Date", "Type", "Activity", "Duration (s)", "Distance (mi)",
@@ -139,16 +139,16 @@ class FitnessTrackerApp:
 
             # Load metrics form values into session state from the DataFrame
             st.session_state.weight_kg = self._get_value(
-                entry_data, 'Weight (kg)', 0.0)
+                entry_data, 'Weight (kg)', None)
             st.session_state.waist_cm = self._get_value(
-                entry_data, 'Waist (cm)', 0.0)
+                entry_data, 'Waist (cm)', None)
             st.session_state.daily_calories = self._get_value(
-                entry_data, 'Daily Calories (kCal)', 0)
+                entry_data, 'Daily Calories (kCal)', None)
             st.session_state.carbs = self._get_value(entry_data, 'Carbs (g)',
-                                                     0)
+                                                     None)
             st.session_state.protein = self._get_value(entry_data,
-                                                       'Protein (g)', 0)
-            st.session_state.fat = self._get_value(entry_data, 'Fat (g)', 0)
+                                                       'Protein (g)', None)
+            st.session_state.fat = self._get_value(entry_data, 'Fat (g)', None)
 
         # --- FORM RENDERING ---
         body_metrics_tab, nutrition_tab, activities_tab = st.tabs(
@@ -271,9 +271,10 @@ class FitnessTrackerApp:
                 submitted = st.form_submit_button("Add Activity")
                 if submitted:
                     duration_s = (hours * 3600) + (minutes * 60) + seconds
+                    date = pd.to_datetime(st.session_state.form_date)
 
                     new_activity_data = {
-                        "Date": pd.to_datetime(st.session_state.form_date),
+                        "Date": date,
                         "Type": activity_type,
                         "Activity": activity,
                         "Duration (s)": duration_s,
@@ -288,6 +289,28 @@ class FitnessTrackerApp:
 
                     st.session_state['activities'] = activities_df.sort_values(
                         by='Date').reset_index(drop=True)
+
+                    # --- Update Active Calories in metrics ---
+                    if calories and calories > 0:
+                        metrics_df = st.session_state['metrics']
+                        entry_exists = not metrics_df[metrics_df['Date'] == date].empty
+
+                        if entry_exists:
+                            current_calories = metrics_df.loc[metrics_df['Date'] == date, 'Active Calories (kCal)'].iloc[0]
+                            if pd.isna(current_calories):
+                                current_calories = 0
+                            new_calories = current_calories + calories
+                            metrics_df.loc[metrics_df['Date'] == date, 'Active Calories (kCal)'] = new_calories
+                        else:
+                            new_row_data = {col: None for col in self.METRICS_COLUMNS}
+                            new_row_data['Date'] = date
+                            new_row_data['Active Calories (kCal)'] = calories
+                            new_df = pd.DataFrame([new_row_data])
+                            metrics_df = pd.concat([metrics_df, new_df], ignore_index=True)
+
+                        st.session_state['metrics'] = metrics_df.sort_values(
+                            by='Date').reset_index(drop=True)
+
                     self._save_data()
                     st.success("Activity added!")
 
@@ -300,13 +323,12 @@ class FitnessTrackerApp:
         if data.empty:
             st.info("No data available to display. Please add an entry.")
             return
-        sorted_data = data.sort_values(by='Date', ascending=False)
 
         net_weight_cell, avg_cals_cell, col3, col4 = st.columns(4)
 
         with net_weight_cell:
-            latest_weight = sorted_data['Weight (kg)'].iloc[0]
-            previous_weight = sorted_data['Weight (kg)'].iloc[1] if len(
+            latest_weight = data['Weight (kg)'].iloc[0]
+            previous_weight = data['Weight (kg)'].iloc[1] if len(
                 data) > 1 else 0
             delta = round(latest_weight - previous_weight, 2)
             st.metric("Latest Weight",
@@ -316,8 +338,8 @@ class FitnessTrackerApp:
 
         with avg_cals_cell:
             start_of_week = today - pd.Timedelta(days=6)
-            weekly_data = sorted_data[(sorted_data['Date'] >= start_of_week)
-                                      & (sorted_data['Date'] <= today)]
+            weekly_data = data[(data['Date'] >= start_of_week)
+                                      & (data['Date'] <= today)]
             weekly_data['Daily Calories (kCal)'] = pd.to_numeric(
                 weekly_data['Daily Calories (kCal)'], errors='coerce')
             avg_calories = weekly_data['Daily Calories (kCal)'].mean()
@@ -372,8 +394,9 @@ class FitnessTrackerApp:
                 st.warning("No data in the selected time horizon.")
                 return
 
+        chart_data = filtered_data.sort_values(by='Date', ascending=True)
         weight_chart_base = alt.Chart(
-            filtered_data[filtered_data['Weight (kg)'].notna()]).encode(
+            chart_data[chart_data['Weight (kg)'].notna()]).encode(
                 alt.X("Date:T", axis=alt.Axis(title='Date',
                                               format='%Y-%m-%d')),
                 alt.Y("Weight (kg):Q").scale(domain=[89, 95]))
@@ -384,12 +407,12 @@ class FitnessTrackerApp:
         line_chart = weight_chart_base.mark_line(interpolate=interpolate)
 
         weight_chart = (area_chart + line_chart).properties(
-            height=300, title="Weight Trend").interactive()
+            height=300, title="Weight Trend")
         if show_ma:
-            filtered_data['MA'] = filtered_data['Weight (kg)'].rolling(
+            chart_data['MA'] = chart_data['Weight (kg)'].rolling(
                 ma_window, min_periods=1).mean()
             ma_chart = alt.Chart(
-                filtered_data[filtered_data['MA'].notna()]).mark_line(
+                chart_data[chart_data['MA'].notna()]).mark_line(
                     color='red',
                     interpolate=interpolate).encode(alt.X("Date:T"),
                                                     alt.Y("MA:Q"))
@@ -417,7 +440,7 @@ class FitnessTrackerApp:
                                                    hide_index=True,
                                                    key="metrics_editor")
                 if st.button("Save Measurement Changes", key="save_metrics_button"):
-                    st.write('saving data')
+                    edited_metrics_df.replace('', None, inplace=True)
                     edited_metrics_df['Date'] = pd.to_datetime(
                         edited_metrics_df['Date'])
                     st.session_state[
@@ -453,7 +476,7 @@ class FitnessTrackerApp:
                                                       hide_index=True,
                                                       key="activities_editor")
                 if st.button("Save Activity Changes", key="save_activities_button"):
-                    st.write('saving data')
+                    edited_activities_df.replace('', None, inplace=True)
                     edited_activities_df['Date'] = pd.to_datetime(
                         edited_activities_df['Date'])
                     st.session_state[
